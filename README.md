@@ -82,7 +82,7 @@ Note that you must set the maximum heap size using `-Xmx` to a value larger than
 If you are using Windows, you may also be interested in a compiled version available from Jim Ablett's [chess projects page](http://jim-ablett.co.de/).
 
 ## Speed
-
+################test#########
 The program runs fastest when run in a 64-bit OS using a 64-bit Java implementation (JVM). Here is a speed comparison using CuckooChess 1.11 in 64-bit Windows 7 on an Intel core i7 870, when analyzing from the initial position to depth 17:
 
 | Version               | Speed (N/s) |
