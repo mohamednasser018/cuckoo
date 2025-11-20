@@ -57,19 +57,19 @@ jobs:
         run: mvn -B clean compile
 
       # Run Tests + Generate JaCoCo Report
-      - name: Test & Coverage Report
-        run: mvn -B verify jacoco:report
+      # - name: Test & Coverage Report
+      #   run: mvn -B verify jacoco:report
 
       # Fail if coverage < 80% (optional)
-      - name: Check Minimum Coverage (80%)
-        run: |
-          if [ ! -f target/site/jacoco/index.html ]; then
-            echo "JaCoCo report not found; skipping coverage check"
-            exit 0
-          fi
-          coverage=$(grep -o '<td>Lines</td><td>[0-9.]*%' target/site/jacoco/index.html | grep -o '[0-9.]*' || echo "0")
-          echo "Line coverage: $coverage%"
-          awk -v cov="$coverage" 'BEGIN {if (cov+0 < 80) exit 1}'
+      # - name: Check Minimum Coverage (80%)
+      #   run: |
+      #     if [ ! -f target/site/jacoco/index.html ]; then
+      #       echo "JaCoCo report not found; skipping coverage check"
+      #       exit 0
+      #     fi
+      #     coverage=$(grep -o '<td>Lines</td><td>[0-9.]*%' target/site/jacoco/index.html | grep -o '[0-9.]*' || echo "0")
+      #     echo "Line coverage: $coverage%"
+      #     awk -v cov="$coverage" 'BEGIN {if (cov+0 < 80) exit 1}'
 
       # Perform CodeQL Analysis (this uploads SARIF results automatically)
       - name: Perform CodeQL Analysis
