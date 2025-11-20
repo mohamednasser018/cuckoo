@@ -1,36 +1,119 @@
-name: SonarQube
+name: Java CI - Production Grade
+
 on:
   push:
-    branches:
-      - master
+    branches: [ main, master, develop ]
   pull_request:
-    types: [opened, synchronize, reopened]
+    branches: [ main, master, develop ]
+
+env:
+  JAVA_VERSION: '21'
+  MAVEN_OPTS: >-
+    -Dmaven.repo.local=.m2/repository
+    -Dstyle.color=always
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli=INFO
+
 jobs:
-  build:
-    name: Build and analyze
+  build-test-analyze:
+    name: Build, Test & Analyze
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      checks: write
+      actions: read
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - name: Set up JDK 21
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
         with:
-          java-version: 21
-          distribution: 'zulu' # Alternative distribution options are available.
-      - name: Cache SonarQube packages
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven 
+
+      - name: Cache Dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      - name: Cache Maven packages
-        uses: actions/cache@v4
+          path: |
+            ~/.m2/repository
+            !~/.m2/repository/**/target
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Compile with Maven
+        run: ./mvnw -B clean compile
+
+      # Run Tests + Generate JaCoCo Report
+      - name: Test & Coverage Report
+        run: ./mvnw -B verify jacoco:report
+
+      # Fail if coverage < 80% (optional but recommended)
+      - name: Check Minimum Coverage (80%)
+        run: |
+          coverage=$(grep -o '<td>Lines</td><td>[0-9.]*%' target/site/jacoco/index.html | grep -o '[0-9.]*')
+          echo "Line coverage: $coverage%"
+          awk -v cov="$coverage" 'BEGIN {if (cov+0 < 80) exit 1}'
+
+      # Upload SARIF for GitHub Code Scanning
+      - name: Upload SARIF (CodeQL)
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
+          sarif_file: ${{ runner.temp }}/results.sarif
+
+      # GitHub CodeQL Security Scan
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: java
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+      # Snyk Vulnerability Scan (fails on high/critical)
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/maven@master
+        continue-on-error: false
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=sauce-code_cuckoo
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --fail-on=upgradable --severity-threshold=high
+
+      # Upload Test Results (visible in GitHub UI)
+      - name: Publish Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+
+      # Upload JaCoCo Coverage to Codecov (optional)
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+      # Build & Upload Artifact (JAR/WAR)
+      - name: Package Artifact
+        run: ./mvnw -B package -DskipTests
+
+      - name: Upload JAR/WAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: target/*.jar
+          retention-days: 30
+  # Success Message
+      - name: All Good!
+        if: success()
+        run: echo "Java CI passed successfully! Ready for CD"
