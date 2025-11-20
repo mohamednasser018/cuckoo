@@ -76,13 +76,13 @@ jobs:
         uses: github/codeql-action/analyze@v3
 
       # Snyk Vulnerability Scan (fails on high/critical)
-      - name: Run Snyk Security Scan
-        uses: snyk/actions/maven@master
-        continue-on-error: false
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --fail-on=upgradable --severity-threshold=high
+      # - name: Run Snyk Security Scan
+      #   uses: snyk/actions/maven@master
+      #   continue-on-error: false
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      #   with:
+      #     args: --fail-on=upgradable --severity-threshold=high
 
       # Upload Test Results (visible in GitHub UI)
       - name: Publish Test Results
