@@ -95,11 +95,11 @@ jobs:
             **/target/failsafe-reports/
 
       # Upload JaCoCo Coverage to Codecov (optional)
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+      # - name: Upload to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     fail_ci_if_error: true
 
       # Build & Upload Artifact (JAR/WAR)
       - name: Package Artifact
