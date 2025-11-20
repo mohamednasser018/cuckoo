@@ -9,7 +9,7 @@ on:
 env:
   JAVA_VERSION: '21'
   MAVEN_OPTS: >-
-    -Dmaven.repo.local=.m2/repository
+    -Dmaven.repo.local=$HOME/.m2/repository
     -Dstyle.color=always
     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli=INFO
 
@@ -36,16 +36,6 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.m2/repository
-            !~/.m2/repository/**/target
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
       # GitHub CodeQL Security Scan: initialize before build so the build step is captured
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -56,35 +46,10 @@ jobs:
       - name: Compile with Maven
         run: mvn -B clean compile
 
-      # Run Tests + Generate JaCoCo Report
-      # - name: Test & Coverage Report
-      #   run: mvn -B verify jacoco:report
-
-      # Fail if coverage < 80% (optional)
-      # - name: Check Minimum Coverage (80%)
-      #   run: |
-      #     if [ ! -f target/site/jacoco/index.html ]; then
-      #       echo "JaCoCo report not found; skipping coverage check"
-      #       exit 0
-      #     fi
-      #     coverage=$(grep -o '<td>Lines</td><td>[0-9.]*%' target/site/jacoco/index.html | grep -o '[0-9.]*' || echo "0")
-      #     echo "Line coverage: $coverage%"
-      #     awk -v cov="$coverage" 'BEGIN {if (cov+0 < 80) exit 1}'
-
       # Perform CodeQL Analysis (this uploads SARIF results automatically)
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
 
-      # Snyk Vulnerability Scan (fails on high/critical)
-      # - name: Run Snyk Security Scan
-      #   uses: snyk/actions/maven@master
-      #   continue-on-error: false
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      #   with:
-      #     args: --fail-on=upgradable --severity-threshold=high
-
-      # Upload Test Results (visible in GitHub UI)
       - name: Publish Test Results
         uses: actions/upload-artifact@v4
         if: always()
@@ -92,26 +57,3 @@ jobs:
           name: test-reports
           path: |
             **/target/surefire-reports/
-            **/target/failsafe-reports/
-
-      # Upload JaCoCo Coverage to Codecov (optional)
-      # - name: Upload to Codecov
-      #   uses: codecov/codecov-action@v4
-      #   with:
-      #     token: ${{ secrets.CODECOV_TOKEN }}
-      #     fail_ci_if_error: true
-
-      # Build & Upload Artifact (JAR/WAR)
-      - name: Package Artifact
-        run: mvn -B package -DskipTests
-
-      - name: Upload JAR/WAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: application-jar
-          path: target/*.jar
-          retention-days: 30
-
-      - name: All Good!
-        if: success()
-        run: echo "Java CI passed successfully! Ready for CD"
